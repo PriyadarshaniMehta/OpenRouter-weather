@@ -14,10 +14,10 @@ def home():
 def webhook():
     data = request.get_json(silent=True, force=True)
 
-    # Extract user message from Dialogflow
+    # Extract user message
     user_message = data.get("queryResult", {}).get("queryText", "")
 
-    # WEATHER HANDLER
+    # ✅ WEATHER HANDLER
     if "weather" in user_message.lower() or "temperature" in user_message.lower():
         try:
             url = "https://api.open-meteo.com/v1/forecast?latitude=28.625&longitude=77.25&current_weather=true"
@@ -33,19 +33,19 @@ def webhook():
         except Exception as e:
             return jsonify({"fulfillmentText": f"Weather API error: {str(e)}"})
 
-    # OPENROUTER LLM HANDLER
+    # ✅ GENERAL CHAT USING OPENROUTER
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {OPENROUTER_KEY}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://gemini-weather-webhook.onrender.com",   # ✅ REQUIRED
-                "X-Title": "Dialogflow Personal Assistant"                       # optional but recommended
+                "HTTP-Referer": "https://openrouter-weather.onrender.com",  # ✅ MUST MATCH EXACTLY
+                "X-Title": "Dialogflow Personal Assistant"
             },
             json={
                 "model": "meta-llama/llama-3.1-70b-instruct",
-                # or: "model": "google/gemini-flash-1.5",
+                # or: "google/gemini-flash-1.5"
                 "messages": [
                     {"role": "system", "content": "You are a helpful AI assistant."},
                     {"role": "user", "content": user_message}
@@ -53,15 +53,19 @@ def webhook():
             }
         ).json()
 
+        # ✅ Debug error
+        if "choices" not in response:
+            return jsonify({"fulfillmentText": f"OpenRouter raw error: {response}"})
+
         reply = response["choices"][0]["message"]["content"]
         return jsonify({"fulfillmentText": reply})
 
     except Exception as e:
         return jsonify({"fulfillmentText": f"OpenRouter error: {str(e)}"})
 
-    # FALLBACK
     return jsonify({"fulfillmentText": "I'm here to help!"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
