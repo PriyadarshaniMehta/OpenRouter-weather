@@ -17,7 +17,7 @@ def webhook():
     # Extract user message from Dialogflow
     user_message = data.get("queryResult", {}).get("queryText", "")
 
-    # ✅ WEATHER HANDLER (runs first)
+    # WEATHER HANDLER
     if "weather" in user_message.lower() or "temperature" in user_message.lower():
         try:
             url = "https://api.open-meteo.com/v1/forecast?latitude=28.625&longitude=77.25&current_weather=true"
@@ -33,18 +33,19 @@ def webhook():
         except Exception as e:
             return jsonify({"fulfillmentText": f"Weather API error: {str(e)}"})
 
-    # ✅ GENERAL CHAT USING OPENROUTER
+    # OPENROUTER LLM HANDLER
     try:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
                 "Authorization": f"Bearer {OPENROUTER_KEY}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://gemini-weather-webhook.onrender.com",   # ✅ REQUIRED
+                "X-Title": "Dialogflow Personal Assistant"                       # optional but recommended
             },
             json={
                 "model": "meta-llama/llama-3.1-70b-instruct",
-                # OPTIONALLY:
-                # "model": "google/gemini-flash-1.5",
+                # or: "model": "google/gemini-flash-1.5",
                 "messages": [
                     {"role": "system", "content": "You are a helpful AI assistant."},
                     {"role": "user", "content": user_message}
@@ -58,8 +59,9 @@ def webhook():
     except Exception as e:
         return jsonify({"fulfillmentText": f"OpenRouter error: {str(e)}"})
 
-    # ✅ FALLBACK
+    # FALLBACK
     return jsonify({"fulfillmentText": "I'm here to help!"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
